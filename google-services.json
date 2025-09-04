@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "790688368972",
+    "project_id": "sigmaiqsociety",
+    "storage_bucket": "sigmaiqsociety.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:790688368972:android:0ed2c331eab8f54365e7e9",
+        "android_client_info": {
+          "package_name": "com.sigmaiq.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAniaPBg-MbSJihDGvmX9w8Bv1dfJMvM9U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

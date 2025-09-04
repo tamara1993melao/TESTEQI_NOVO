@@ -1,29 +1,60 @@
 {
   "expo": {
-    "name": "TESTEQI_NOVO",
-    "slug": "TESTEQI_NOVO",
+    "name": "SigmaIQ",
+    "slug": "TESTEQI",
+    "scheme": "sigmaiq",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "jsEngine": "jsc",
     "splash": {
       "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
+      "resizeMode": "cover",
       "backgroundColor": "#ffffff"
     },
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#00d3aa",
+      "iosDisplayInForeground": true
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sigmaiq.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.sigmaiq.app",
+      "googleServicesFile": "./google-services.json",
+      "permissions": ["POST_NOTIFICATIONS"]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-notifications",
+      "expo-secure-store",
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "876a2506-952e-4d41-a90f-c23632620834"
+      },
+      "supabaseUrl": "https://hvnbvzqrrkqxlekbfcbg.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh2bmJ2enFycmtxeGxla2JmY2JnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0ODM5NDAsImV4cCI6MjA3MTA1OTk0MH0.VRmgxbEDd11j8YuK5wNwKPSrGu5djtKNGeuCYUQoceA"
+    },
+    "owner": "tamarapcr",
+    "runtimeVersion": { "policy": "appVersion" },
+    "updates": {
+      "url": "https://u.expo.dev/876a2506-952e-4d41-a90f-c23632620834"
+    },
+    "sdkVersion": "53.0.0"
   }
 }

@@ -1,0 +1,27 @@
+-- Cria / recria função
+create or replace function cleanup_user_leaderboard_positions()
+returns integer
+language plpgsql
+as $$
+declare
+  deleted_count integer;
+begin
+  with older as (
+    select ctid,
+           row_number() over (
+             partition by game, segment
+             order by captured_at desc, rank_pos
+           ) as rn
+    from user_leaderboard_positions
+    where captured_at < now() - interval '30 days'
+  ),
+  del as (
+    delete from user_leaderboard_positions
+    where ctid in (select ctid from older where rn > 1000)
+    returning 1
+  )
+  select count(*) into deleted_count from del;
+
+  return coalesce(deleted_count,0);
+end;
+$$;

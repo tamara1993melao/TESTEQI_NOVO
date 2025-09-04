@@ -1,0 +1,37 @@
+[functions.notify]
+enabled = true
+verify_jwt = false
+import_map = "./functions/notify/deno.json"
+entrypoint = "./functions/notify/index.ts"
+[functions.prune]
+enabled = true
+verify_jwt = true
+import_map = "./functions/prune/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/prune/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/prune/*.html" ]
+
+[functions.rank]
+enabled = true
+verify_jwt = true
+import_map = "./functions/rank/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/rank/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/rank/*.html" ]
+
+[functions.check-leaderboards]
+enabled = true
+verify_jwt = true
+import_map = "./functions/check-leaderboards/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/check-leaderboards/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/check-leaderboards/*.html" ]
