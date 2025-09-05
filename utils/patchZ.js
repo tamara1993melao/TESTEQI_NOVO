@@ -17,7 +17,9 @@ if (global.HermesInternal) {
 
 export default function ensureZ(obj) {
   if (obj && typeof obj === 'object' && !('z' in obj)) {
-    obj.z = 0;
+    if (obj) {
+      obj.z = 0;
+    }
   }
   return obj;
 }

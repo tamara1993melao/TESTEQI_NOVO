@@ -675,7 +675,7 @@ export default function Matrizes({ navigation }) {
       )}
 
       {/* Configurações (sem perfil interno) */}
-      <Modal visible={showSettings} transparent animationType="fade" onRequestClose={() => setShowSettings(false)}>
+    <Modal visible={showSettings} transparent animationType="none" onRequestClose={() => setShowSettings(false)}>
         <View style={styles.modalWrap}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Partida</Text>
@@ -711,7 +711,7 @@ export default function Matrizes({ navigation }) {
       </Modal>
 
       {/* Resultados */}
-      <Modal visible={showResults} transparent animationType="fade" onRequestClose={() => setShowResults(false)}>
+    <Modal visible={showResults} transparent animationType="none" onRequestClose={() => setShowResults(false)}>
         <View style={styles.modalWrap}>
           <View style={styles.resultsCard}>
             {(() => {

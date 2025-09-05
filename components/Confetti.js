@@ -1,19 +1,29 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
 
+// Componente simples de confete (lightweight) para não depender de libs nativas.
+// Corrige bug anterior: uso de variáveis não declaradas (count, colors, duration, fallSpeed, style)
+// e caractere 'z' solto no final que causava ReferenceError no Hermes.
+
 const { width, height } = Dimensions.get('window');
 
-export function Confetti(/* props */) {
+export function Confetti({
+  count = 80,
+  duration = 4000,        // ms totais da animação de queda
+  fallSpeed = 1,          // multiplicador da velocidade
+  colors = ['#e67e22', '#2ecc71', '#3498db', '#ffd166', '#e74c3c', '#9b59b6'],
+  style,
+}) {
+  // Memo simples: só cria peças uma vez
   const pieces = useRef(
     Array.from({ length: count }).map(() => ({
       x: Math.random() * width,
       delay: Math.random() * 600,
       rotate: new Animated.Value(0),
       fall: new Animated.Value(0),
-      scale: 0.6 + Math.random() * 0.8,
+      scale: 0.5 + Math.random() * 0.9,
       color: colors[Math.floor(Math.random() * colors.length)],
       wobbleAmp: 12 + Math.random() * 18,
-      wobbleFreq: 1 + Math.random() * 2,
     }))
   ).current;
 
@@ -22,8 +32,8 @@ export function Confetti(/* props */) {
       Animated.parallel([
         Animated.timing(p.fall, {
           toValue: 1,
-            duration: duration * fallSpeed,
-            delay: p.delay,
+          duration: duration * fallSpeed,
+          delay: p.delay,
           easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
@@ -44,24 +54,19 @@ export function Confetti(/* props */) {
       {pieces.map((p, i) => {
         const translateY = p.fall.interpolate({
           inputRange: [0, 1],
-          outputRange: [-40, height + 40],
+            outputRange: [-40, height + 40],
         });
         const rotate = p.rotate.interpolate({
           inputRange: [0, 1],
           outputRange: ['0deg', '360deg'],
         });
-        // wobble lateral
+        // Pequena oscilação lateral usando seno aproximado via interpolação
         const wobble = p.fall.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, p.wobbleAmp],
+          inputRange: [0, 0.5, 1],
+          outputRange: [0, p.wobbleAmp, 0],
         });
-        const translateX = Animated.add(
-          new Animated.Value(p.x),
-          Animated.multiply(
-            wobble,
-            new Animated.Value(Math.random() > 0.5 ? 1 : -1)
-          )
-        );
+        // Simples combinação de posições
+        const translateX = Animated.add(new Animated.Value(p.x), wobble);
 
         return (
           <Animated.View
@@ -79,8 +84,8 @@ export function Confetti(/* props */) {
                 { scale: p.scale },
               ],
               opacity: p.fall.interpolate({
-                inputRange: [0, 0.85, 1],
-                outputRange: [0, 1, 0],
+                inputRange: [0, 0.05, 0.85, 1],
+                outputRange: [0, 1, 1, 0],
               }),
             }}
           />
@@ -88,4 +93,6 @@ export function Confetti(/* props */) {
       })}
     </View>
   );
-}z
+}
+
+export default Confetti;
