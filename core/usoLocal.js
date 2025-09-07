@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { carregarLimites, getLimite } from './limitesConfig'
+import { supabase } from '../supabaseClient'
 
 // chave por dia
 function chaveUsoDia() {
@@ -39,10 +40,22 @@ export async function podeConsumir(codigo, plano='free') {
     return { ok:false, erro:'codigo_desconhecido' }
   }
 
-  // Compra única (STF_ACCESS)
+  // Compra única (STF_ACCESS): verificar no Supabase se o usuário tem entitlement ativo
   if (limiteRow.exige_compra_unica) {
-    // Por enquanto sem backend para verificar compra -> bloqueado
-    return { ok:false, erro:'compra_unica_necessaria' }
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { ok:false, erro:'nao_logado' }
+    const { data, error } = await supabase
+      .from('compras')
+      .select('is_active, product_id, expires_at')
+      .eq('user_id', user.id)
+      .eq('product_id', 'com.sigmaiq.stf')
+      .limit(1)
+      .maybeSingle()
+    if (!error && data && data.is_active && (!data.expires_at || new Date(data.expires_at).getTime() > Date.now())) {
+      // liberado por compra/entitlement
+    } else {
+      return { ok:false, erro:'compra_unica_necessaria' }
+    }
   }
 
   const usado = cacheUso[codigo] || 0

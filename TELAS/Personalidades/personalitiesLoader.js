@@ -5,7 +5,7 @@ import { processRaw } from './dataProcessor'
 let mem = null
 let inFlight = null
 let lastFetchTs = 0
-const CACHE_KEY = 'personas:cache:v3'
+const CACHE_KEY = 'personas:cache:v4' // antes: v3
 const MAX_AGE = 24*3600*1000
 const MIN_REFRESH_INTERVAL = 5 * 60 * 1000 // não refaz download em menos de 5 min
 

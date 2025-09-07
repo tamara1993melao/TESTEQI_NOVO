@@ -20,7 +20,7 @@ export function EntitlementsProvider({ children }) {
       setPremium(false); setStf(false); setLoading(false); return
     }
     const { data, error } = await supabase
-      .from('user_entitlements')
+      .from('v_compras_usuario')
       .select('product_id, kind, status, expires_at')
       .eq('user_id', user.id)
       .eq('status', 'active')
@@ -35,8 +35,8 @@ export function EntitlementsProvider({ children }) {
       !r.expires_at || new Date(r.expires_at).getTime() > now
     )
 
-    const hasSub = active.some(r => r.kind === 'subscription')
-    const hasSTF = hasSub || active.some(r => r.product_id === 'stf_unlock')
+  const hasSub = active.some(r => r.kind === 'subscription')
+  const hasSTF = hasSub || active.some(r => r.product_id === 'com.sigmaiq.stf')
 
     setPremium(hasSub)
     setStf(hasSTF)

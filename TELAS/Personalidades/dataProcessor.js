@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { supabase } from '../../supabaseClient'
 
 // ================== CONFIG ==================
-const PERSONAS_CACHE_KEY = 'personas:cache:v1'
+const PERSONAS_CACHE_KEY = 'personas:cache:v2' // antes: v1
 const PERSONAS_MAX_AGE = 24 * 3600 * 1000
 const PERSONAS_REMOTE_URL = 'https://hvnbvzqrrkqxlekbfcbg.supabase.co/storage/v1/object/datasets/personas.json'
 
@@ -40,12 +40,16 @@ function parseNormalArray(arr) {
     const o = normalizeKeys(row)
     const QI_calculado = toInt(o.QI_calculado ?? o.qi_calculado ?? o.QI ?? o.qi)
     const pIQ_HM_estimado = toInt(o.pIQ_HM_estimado ?? o.pqi_hm_estimado)
-    const nome = o.nome || o.person || o.name || o.full_name
+
+    // Preferir 'person' se existir; não sobrescrever
+    const display = o.person || o.nome || o.name || o.full_name
+
     return {
       ...o,
       index: toInt(o.index) ?? (i + 1),
-      nome,
-      person: nome,
+      // mantém valores originais se presentes
+      nome: o.nome ?? display,
+      person: o.person ?? display,
       QI_calculado,
       pIQ_HM_estimado
     }

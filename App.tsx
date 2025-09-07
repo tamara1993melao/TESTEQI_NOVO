@@ -37,9 +37,9 @@ import ProcurarSimbolos from './TELAS/Nivel2/ProcurarSimbolos';
 import Hub from './TELAS/Personalidades/Hub';
 import Adivinhe from './TELAS/Personalidades/Adivinhe';
 import IQ from './TELAS/Personalidades/IQ';
-import Connections from './TELAS/Personalidades/Connections';
 import DesafioDetalhe from './TELAS/Desafio/DesafioDetalhe';
 import ThinkFastDesafio from './TELAS/ThinkFastDesafio';
+import { initIAP, onEntitlementsChanged } from './utils/iapRevenueCat'
 
 // (2) navigationRef para navegação fora de componentes (igual App.js)
 export const navigationRef = createNavigationContainerRef();
@@ -95,7 +95,6 @@ function AppStack({ route }: { route: any }) {
       <Stack.Screen name="QuizPersonalidades" component={Hub} />
       <Stack.Screen name="Adivinhe" component={Adivinhe} />
       <Stack.Screen name="IQ" component={IQ} />
-      <Stack.Screen name="Connections" component={Connections} />
       <Stack.Screen name="Matrizes" component={Matrizes} />
       <Stack.Screen name="Nivel2ProcurarSimbolos" component={ProcurarSimbolos} options={{ headerShown: false }} />
       <Stack.Screen name="DesafioDetalhe" component={DesafioDetalhe} options={{ title: 'Desafio' }} />
@@ -158,6 +157,24 @@ export default function App() {
     console.log('STEP: Matrizes init');
     preloadMatrizesManifest();
   }, []);
+
+  // (9.1) Inicializa IAP (RevenueCat) após saber a sessão
+  useEffect(() => {
+    (async () => {
+      try {
+        await initIAP();
+      } catch (e: any) {
+        console.log('[IAP] init erro', e?.message || e)
+      }
+    })();
+    const sub = onEntitlementsChanged?.(() => {
+      // opcional: poderíamos disparar um refresh do EntitlementsContext via evento global
+      // deixando leve por enquanto
+    })
+    return () => {
+      try { sub?.remove?.() } catch {}
+    }
+  }, [session?.user?.id])
 
   // (10) Notificações (permissões + canal Android)
   useEffect(() => {

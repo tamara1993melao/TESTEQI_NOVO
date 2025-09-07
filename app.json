@@ -20,7 +20,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sigmaiq.app",
+      "bundleIdentifier": "com.sigmaiq.testeqi",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -31,24 +31,23 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.sigmaiq.app",
+      "package": "com.sigmaiq.testeqi",
       "googleServicesFile": "./google-services.json",
       "permissions": ["POST_NOTIFICATIONS"]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-notifications",
-      "expo-secure-store",
-      "expo-font"
-    ],
+    "plugins": [],
     "extra": {
       "eas": {
         "projectId": "876a2506-952e-4d41-a90f-c23632620834"
       },
       "supabaseUrl": "https://hvnbvzqrrkqxlekbfcbg.supabase.co",
-      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh2bmJ2enFycmtxeGxla2JmY2JnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0ODM5NDAsImV4cCI6MjA3MTA1OTk0MH0.VRmgxbEDd11j8YuK5wNwKPSrGu5djtKNGeuCYUQoceA"
+  "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh2bmJ2enFycmtxeGxla2JmY2JnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0ODM5NDAsImV4cCI6MjA3MTA1OTk0MH0.VRmgxbEDd11j8YuK5wNwKPSrGu5djtKNGeuCYUQoceA",
+  "EXPO_PUBLIC_RC_IOS": "appl_xxxxxxxxxxxxx",
+  "EXPO_PUBLIC_RC_ANDROID": "goog_xxxxxxxxxxxxx",
+  "EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL": "https://hvnbvzqrrkqxlekbfcbg.functions.supabase.co"
     },
     "owner": "tamarapcr",
     "runtimeVersion": { "policy": "appVersion" },

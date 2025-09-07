@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useState } from 'react'
 import {
   View,
   Text,
@@ -6,16 +6,20 @@ import {
   Pressable,
   Animated,
   Easing,
-  Modal
+  Modal,
+  TextInput
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Feather } from '@expo/vector-icons'
 import { usePaywall } from '../paywallContext'
 import { usePlano } from '../planoContext'
+import { supabase } from '../supabaseClient'
 
 export default function PaywallModal() {
   const { visible, foco, close } = usePaywall()
   const { plano, setPlano } = usePlano()
+  const [code, setCode] = useState('')
+  const [redeemStatus, setRedeemStatus] = useState('')
   const isPremium = plano !== 'free'
   const fade = useRef(new Animated.Value(0)).current
   const scale = useRef(new Animated.Value(0.9)).current
@@ -37,6 +41,22 @@ export default function PaywallModal() {
   const handleUpgrade = tipo => {
     setPlano(tipo) // 'premium_mensal' ou 'premium_anual'
     close()
+  }
+
+  async function redeem() {
+    try {
+      setRedeemStatus('')
+  const url = `${process.env.EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL || ''}/iap-redeem`
+      const { data } = await supabase.auth.getUser()
+      const uid = data?.user?.id
+      if (!uid) throw new Error('Faça login para resgatar')
+      const r = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ code, user_id: uid }) })
+      if (!r.ok) throw new Error(await r.text())
+      setRedeemStatus('Código aplicado!')
+      close()
+    } catch (e) {
+      setRedeemStatus(typeof e === 'string' ? e : (e?.message || 'Erro ao resgatar'))
+    }
   }
 
   return (
@@ -83,6 +103,23 @@ export default function PaywallModal() {
                   <Feather name="calendar" size={16} color="#ffd86b" />
                   <Text style={styles.btnOutlineTxt}>Assinar Anual</Text>
                 </Pressable>
+                <View style={styles.redeemRow}>
+                  <Text style={styles.redeemLabel}>Tem um código?</Text>
+                  <View style={styles.redeemBox}>
+                    <TextInput
+                      placeholder="DIGITE O CÓDIGO"
+                      placeholderTextColor="#9fbcc6"
+                      value={code}
+                      onChangeText={setCode}
+                      style={styles.redeemInput}
+                      autoCapitalize="characters"
+                    />
+                    <Pressable style={[styles.btn, styles.btnMini]} onPress={redeem}>
+                      <Text style={styles.btnMiniTxt}>Resgatar</Text>
+                    </Pressable>
+                  </View>
+                  {!!redeemStatus && <Text style={styles.redeemMsg}>{redeemStatus}</Text>}
+                </View>
                 <Pressable style={[styles.linkBtn]} onPress={close}>
                   <Text style={styles.linkTxt}>Continuar depois</Text>
                 </Pressable>
@@ -141,4 +178,11 @@ const styles = StyleSheet.create({
   btnGhostTxt:{ color:'#e2f4fa', fontSize:15, fontWeight:'600' },
   linkBtn:{ alignSelf:'center', paddingVertical:4, paddingHorizontal:8, marginTop:2 },
   linkTxt:{ color:'#9fbcc6', fontSize:12, textDecorationLine:'underline' }
+  ,redeemRow:{ marginTop:8 },
+  redeemLabel:{ color:'#cfe7f0', fontSize:12, marginBottom:6 },
+  redeemBox:{ flexDirection:'row', alignItems:'center', gap:8 },
+  redeemInput:{ flex:1, backgroundColor:'#ffffff10', color:'#e2f4fa', paddingHorizontal:10, paddingVertical:8, borderRadius:10, borderWidth:1, borderColor:'#33515a' },
+  btnMini:{ backgroundColor:'#ffd86b', paddingVertical:8, paddingHorizontal:12, borderRadius:10 },
+  btnMiniTxt:{ color:'#0a0f12', fontWeight:'700' },
+  redeemMsg:{ color:'#9fbcc6', fontSize:12, marginTop:6 }
 })

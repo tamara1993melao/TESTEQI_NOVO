@@ -6,6 +6,8 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
+// ADICIONE o client do Supabase (ajuste o caminho conforme seu projeto)
+import { supabase } from '../supabaseClient'; // <-- caminho correto (arquivo está na raiz do projeto)
 // SUBSTITUA os imports de confetti CANON:
 let ConfettiCannon;
 try {
@@ -165,6 +167,16 @@ export default function ThinkFast90({ navigation }) {
   const [wrongClicks, setWrongClicks] = useState(0);
   const [lastRt, setLastRt] = useState(null);
 
+  // >>> espelhos imediatos (evitam "um clique atrás")
+  const hitsRef = useRef(0);
+  useEffect(() => { hitsRef.current = hits; }, [hits]);
+
+  const wrongClicksRef = useRef(0);
+  useEffect(() => { wrongClicksRef.current = wrongClicks; }, [wrongClicks]);
+
+  const timesRef = useRef([]);
+  useEffect(() => { timesRef.current = times; }, [times]);
+
   // Nome do Perfil (Supabase) e recordes/resultados
   const [displayName, setDisplayName] = useState('Convidado');
   const [bestUser, setBestUser] = useState({ avg: null, best: null, count: 0, name: '' });
@@ -197,6 +209,10 @@ export default function ThinkFast90({ navigation }) {
   const runningRef = useRef(false);
   const pausedRef = useRef(false);
   const cfgRef = useRef(cfg);
+
+  // Evita processamento duplo do mesmo alvo
+  const activeTargetIdRef = useRef(null);
+  const groupLockedRef = useRef(false);
 
   const { playVictory, playDefeat } = useEndSounds();
 
@@ -343,6 +359,8 @@ export default function ThinkFast90({ navigation }) {
     const target = { id: uid(), x: pos.x, y: pos.y, wordEn, fillPt, created: now, scale };
 
     setTargets([target]);
+    activeTargetIdRef.current = target.id;   // <<< guarda alvo ativo
+    groupLockedRef.current = false;          // <<< libera processamento
     groupStartRef.current = now;
     setElapsedMs(0);
 
@@ -350,15 +368,17 @@ export default function ThinkFast90({ navigation }) {
   };
 
   // Adaptação por bloco (alvo 85% acurácia) e mentor
-  const onEndOfGroup = () => {
-    const done = groupsDoneRef.current;
+  const onEndOfGroup = (snapshot) => {
+    const done = snapshot?.done ?? groupsDoneRef.current;
+    const hitsNow = snapshot?.hits ?? hitsRef.current;
     const trials = Number(cfgRef.current.trials) || 0;
 
     if (trials > 0 && done >= trials) return false;
 
     let showed = false;
     if (done > 0 && done % MENTOR_EVERY_ROUNDS === 0) {
-      const acc = Math.round((hits / done) * 100);
+      // usa a MESMA conta da barra inferior
+      const acc = done > 0 ? Math.round((hitsNow / done) * 100) : 0;
       let msg = '';
       if (acc >= 90) msg = 'Ótima precisão; acelere um pouco mantendo a qualidade.';
       else if (acc <= 75) msg = 'Precisão baixa. Veja o estímulo completo antes de tocar.';
@@ -380,31 +400,53 @@ export default function ThinkFast90({ navigation }) {
     setTimeout(() => setPressedBtn(null), 160);
 
     const t = targets[0];
+
+    // Se não há alvo, ou o alvo já foi pontuado, ignora (evita contagens duplas)
     if (!t) return;
+    if (groupLockedRef.current) return;
+    if (t.id !== activeTargetIdRef.current) return;
+
+    // Trava este grupo imediatamente (primeiro toque válido decide)
+    groupLockedRef.current = true;
 
     const expectedPt = EN_TO_PT[t.wordEn];
+    const trials = Number(cfgRef.current.trials) || 0;
+
     if (ptKey === expectedPt) {
       const rt = Date.now() - groupStartRef.current;
       setLastRt(rt);
       setTimes(arr => [...arr, rt]);
+
+      const newHits = hitsRef.current + 1;
+      const newDone = groupsDoneRef.current + 1;
+
       setHits(h => h + 1);
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      // some sempre após a resposta
-      groupsDoneRef.current += 1;
+      groupsDoneRef.current = newDone;
       setTargets([]);
 
-      const intermission = onEndOfGroup();
+      if (trials > 0 && newDone >= trials) {
+        return finish({ hits: newHits, wrongClicks: wrongClicksRef.current, done: newDone, times: [...timesRef.current, rt] });
+      }
+
+      const intermission = onEndOfGroup({ hits: newHits, done: newDone });
       if (!intermission) scheduleNextGroup(350);
     } else {
+      const newWrong = wrongClicksRef.current + 1;
+      const newDone = groupsDoneRef.current + 1;
+
       setWrongClicks(w => w + 1);
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-      // mesmo na errada: conta rodada, some e segue fluxo de mensagem/pausa
-      groupsDoneRef.current += 1;
+      groupsDoneRef.current = newDone;
       setTargets([]);
 
-      const intermission = onEndOfGroup();
+      if (trials > 0 && newDone >= trials) {
+        return finish({ hits: hitsRef.current, wrongClicks: newWrong, done: newDone, times: timesRef.current });
+      }
+
+      const intermission = onEndOfGroup({ hits: hitsRef.current, done: newDone });
       if (!intermission) scheduleNextGroup(350);
     }
   };
@@ -433,32 +475,37 @@ export default function ThinkFast90({ navigation }) {
 
   const currentSnapshot = useMemo(() => {
     const s = computeStats(times);
-    const percent = cfg.trials > 0 ? Math.round((hits / cfg.trials) * 100) : 0;
-    return { ...s, hits, misses, wrongClicks, trials: cfg.trials, percent, player: displayName || 'Convidado', at: Date.now(), difficulty };
+    const doneNow = groupsDoneRef.current || 0;
+    const percent = doneNow > 0 ? Math.round((hits / doneNow) * 100) : 0; // usa rodadas jogadas
+    return { ...s, hits, misses, wrongClicks, trials: doneNow, percent, player: displayName || 'Convidado', at: Date.now(), difficulty };
   }, [times, hits, misses, wrongClicks, cfg.trials, displayName, difficulty]);
 
   const percentNow = groupsDoneRef.current > 0
     ? Math.round((hits / groupsDoneRef.current) * 100)
     : 0;
 
-  const finish = async () => {
+  const finish = async (snap = {}) => {
     setRunning(false); runningRef.current = false;
     setPaused(false); pausedRef.current = false;
     cleanupAllTimers();
+    setTargets([]);                    // <<< remove alvo pendente
     setStatusMsg('Fim!');
 
-    const s = computeStats(times);
+    // snapshot consistente
+    const hitsNow = snap.hits ?? hitsRef.current;
+    const wrongNow = snap.wrongClicks ?? wrongClicksRef.current;
+    const doneNow = snap.done ?? groupsDoneRef.current;
+    const timesNow = snap.times ?? timesRef.current;
 
-    // calcule UMA vez e use a mesma variável
-    const percent = cfg.trials > 0 ? Math.round((hits / cfg.trials) * 100) : 0;
+    const s = computeStats(timesNow);
+    const percent = doneNow > 0 ? Math.round((hitsNow / doneNow) * 100) : 0;
 
-    // Envio ao Supabase sem bloquear a UI
     saveThinkfast90Result({
       displayName,
       difficulty,
       stats: s,
       percent,
-      hits,
+      hits: hitsNow,
     }).catch(e => console.log('[thinkfast90] saveThinkfast90Result failed', e));
 
     await maybeSaveUserBest(s);
@@ -466,22 +513,20 @@ export default function ThinkFast90({ navigation }) {
 
     if (percent >= 70) playVictory(); else playDefeat();
 
-    // Brainpower e FOCUS (pré vs sessão)
     const pre = computeStats(preRts);
     const focusPre = pre.med ? Math.round(100000 / pre.med) : null;
     const focusPost = s.med ? Math.round(100000 / s.med) : null;
     const focusDelta = (focusPre != null && focusPost != null) ? (focusPost - focusPre) : null;
 
-    // use "percent" (já definido) aqui
     const brainpower = (s.avg && percent != null) ? Math.max(1, Math.round((percent / 100) * 100000 / s.avg)) : null;
 
     const session = {
       ...s,
-      hits,
+      hits: hitsNow,
       misses,
-      wrongClicks,
-      trials: cfg.trials,
-      percent, // <-- era percent2 (não existe)
+      wrongClicks: wrongNow,
+      trials: doneNow,       // rodadas efetivamente jogadas
+      percent,
       player: displayName || 'Convidado',
       at: Date.now(),
       difficulty,
@@ -493,7 +538,6 @@ export default function ThinkFast90({ navigation }) {
     setLastStats(session);
     setShowResults(true);
     AsyncStorage.setItem('thinkfast90:last', JSON.stringify(session)).catch(() => {});
-    // histórico
     try {
       const raw = await AsyncStorage.getItem('thinkfast90:history');
       const hist = raw ? JSON.parse(raw) : [];
@@ -874,9 +918,18 @@ export default function ThinkFast90({ navigation }) {
 
               <Text style={styles.resultsTitle}>Resultados</Text>
 
-              <Text style={styles.sectionTitle}>Recorde (modo {difficulty === 'hard' ? 'Difícil' : 'Normal'})</Text>
+              {/* Usa o modo da sessão exibida para evitar discrepância */}
               {(() => {
-                const r = records[difficulty === 'hard' ? 'hard' : 'normal'];
+                const m = (lastStats?.difficulty ?? difficulty);
+                return (
+                  <Text style={styles.sectionTitle}>
+                    Recorde (modo {m === 'hard' ? 'Difícil' : 'Normal'})
+                  </Text>
+                );
+              })()}
+              {(() => {
+                const m = (lastStats?.difficulty ?? difficulty);
+                const r = records[m === 'hard' ? 'hard' : 'normal'];
                 return (
                   <>
                     <View style={styles.resRow}>

@@ -177,17 +177,4 @@ export const RECORD_GAMES = {
     metric: (r) => `${r.percent ?? '—'}% • ${r.time_ms ?? '—'} ms`,
     localKey: 'iq:last',
   },
-
-  // Sem segmentação
-  connections: {
-    key: 'connections',
-    title: 'Personalidades • Conexões',
-    table: 'personalities_connections_leaderboard',
-    select: 'pos,user_id,user_name,percent,score,time_ms,created_at',
-    orders: [{ col: 'pos', asc: true }],
-    globalLimit: 10,
-    personalLimit: 3,
-    metric: (r) => `${r.percent ?? '—'}% • ${r.time_ms ?? '—'} ms`,
-    localKey: 'connections:last',
-  },
 }

@@ -23,14 +23,16 @@
     "expo-notifications": "^0.31.4",
     "expo-secure-store": "~14.2.4",
     "expo-status-bar": "~2.2.3",
+    "expo-updates": "~0.28.17",
     "react": "19.0.0",
     "react-native": "0.79.5",
+    "react-native-gesture-handler": "~2.24.0",
+    "react-native-purchases": "^7.28.1",
     "react-native-safe-area-context": "^5.4.0",
     "react-native-screens": "~4.11.1",
     "react-native-svg": "^15.11.2",
     "react-native-url-polyfill": "^2.0.0",
-    "react-native-view-shot": "^4.0.3",
-    "react-native-gesture-handler": "~2.24.0"
+    "react-native-view-shot": "^4.0.3"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

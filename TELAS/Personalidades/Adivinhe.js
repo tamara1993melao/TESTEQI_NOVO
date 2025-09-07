@@ -128,7 +128,7 @@ function labelFor(key, val) {
     case 'familia': return `Veio de família ${val}`;
     case 'imigrante': return `Foi imigrante`;
     case 'curiosidades': return `${val}`;
-    case 'nobel': return `${val}`;
+    case 'nobel': return `Laureado com o Nobel: ${val}`;
     default: return `${key}: ${val}`;
   }
 }
@@ -202,11 +202,11 @@ function buildHintsStructured(p) {
   h2 = chooseFrom(p, ['Nascimento', 'Morte', 'Floresceu','curiosidades','nobel'], used);
 
   // H3: geografia (sem curiosidades)
-  h3 = chooseFrom(p, ['pais_2020', 'pais_nascimento', 'pais_trabalhou', 'etnia','curiosidades'], used);
+  h3 = chooseFrom(p, ['pais_2020','nobel', 'pais_nascimento', 'pais_trabalhou', 'etnia','curiosidades'], used);
 
   // H4/H5: candidatas para secretas (sem curiosidades)
   h4 = chooseFrom(p, ['sub_area_atuacao', 'QI', 'etnia', 'familia','nobel'], used);
-  h5 = chooseFrom(p, ['QI','pais_2020', 'familia', 'sub_area_atuacao', 'pais_trabalhou', 'etnia','nobel','area_atuacao'], used);
+  h5 = chooseFrom(p, ['pais_2020', 'familia', 'sub_area_atuacao', 'pais_trabalhou', 'etnia','nobel','area_atuacao'], used);
 
   // Visíveis
   const visible = [h1, h2, h3].filter(Boolean);
@@ -725,8 +725,8 @@ export default function Adivinhe({ navigation }) {
   if (showIntro) {
     return (
       <LinearGradient colors={['#0f2027', '#203a43', '#2c5364']} style={{ flex: 1 }}>
-
-        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        {/* Header em overlay para não empurrar o centro */}
+        <View style={[styles.header, styles.headerOverlay, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Feather name="arrow-left" size={26} color="#fff" />
           </TouchableOpacity>
@@ -736,6 +736,7 @@ export default function Adivinhe({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {/* Centro realmente centralizado */}
         <View style={styles.introCenter}>
           <View style={styles.introCard}>
             <TouchableOpacity onPress={() => setShowSettings(true)} style={styles.introSettingsBtn}>
@@ -747,13 +748,12 @@ export default function Adivinhe({ navigation }) {
               <Text style={styles.introTitle}>Adivinhe quem é</Text>
             </View>
             <Text style={styles.introText}>
-              Você verá 3 pistas sobre uma personalidade e 5 alternativas de nome.
+              Você verá 3 pistas sobre uma personalidade e 4 alternativas de nome.
               Há 3 Pistas Secretas: usar 1 reduz o acerto para 0,8 ponto; usar 2 reduz para 0,7; usar 3 reduz para 0,5.
               {'\n\n'}
             </Text>
-            <Text style={styles.introTips}>
-              Analise com calma!
-            </Text>
+            <Text style={styles.introTips}>Analise com calma!</Text>
+
             <TouchableOpacity style={styles.primaryBtn} onPress={iniciarAdivinhe} activeOpacity={0.9}>
               <Feather name="play-circle" size={20} color="#0a0f12" />
               <Text style={styles.primaryBtnTxt}>Começar</Text>
@@ -1128,7 +1128,8 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
 
   // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ALTERADO: paddingTop base 0; topo vem de insets <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-  header: { paddingTop: 0, paddingBottom: 12, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, // ALTERADO
+  header: { paddingTop: 0, paddingBottom: 12, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerOverlay: { position: 'absolute', left: 0, right: 0, top: 0, zIndex: 10 }, // <- novo
   backButton: { padding: 6 },
 
   iconBtn: { padding: 8, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 14 },

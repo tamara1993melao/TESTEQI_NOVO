@@ -191,15 +191,15 @@ function ThinkFastInner({ navigation }) {
 
   // Configurações (base)
   const [cfg, setCfg] = useState({
-    trials: 30,
+    trials: 100,
     delayMin: 350,
     delayMax: 900,
-    ttl: 1800,
+    ttl: 2200,
     size: 66,
     maxConcurrent: 5,
     tournamentId: '',
-    rampEvery: 10,
-    rampDelayMs: 40,
+    rampEvery: 50,
+    rampDelayMs: 50,
     rampTtlMs: 60,
   });
   const [showSettings, setShowSettings] = useState(false);
@@ -598,7 +598,8 @@ function ThinkFastInner({ navigation }) {
         trials: session.trials ?? null,
         percent: session.percent ?? null,
         score: session.tournamentScore ?? null,
-        total_count: session.total ?? null, // NOVO
+        // total_count = total resolvido (acertos), não o que apareceu
+        total_count: session.hits ?? null,
       };
       await supabase.from('thinkfast_results').insert(payload);
     } catch (e) {

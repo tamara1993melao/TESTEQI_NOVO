@@ -1,0 +1,6 @@
+{
+  "tasks": {
+    "dev": "deno run -A --watch=static/,routes/ dev.ts"
+  },
+  "lint": { "rules": { "include": ["ban-untagged-todo"] } }
+}

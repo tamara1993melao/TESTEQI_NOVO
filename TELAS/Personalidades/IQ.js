@@ -30,7 +30,7 @@ const isKnown = (v) => {
   const s = clean(v).toLowerCase();
   return !!s && s !== 'desconhecido' && s !== 'nf' && s !== 'na' && s !== 'n/a';
 };
-const nameOf = (p) => clean(p?.person || p?.nome);
+const nameOf = (p) => clean(p?.person);
 const arrify = (v) => Array.isArray(v) ? v : (isKnown(v) ? String(v).split(/[,;•|]/).map(s => clean(s)).filter(Boolean) : []);
 const randFrom = (arr) => (Array.isArray(arr) && arr.length ? arr[Math.floor(Math.random() * arr.length)] : null);
 
@@ -38,7 +38,8 @@ const randFrom = (arr) => (Array.isArray(arr) && arr.length ? arr[Math.floor(Mat
 const stripLabel = (t) => String(t).replace(/^(Área:|Instituição:|País\/Região:|Curiosidade:|Conhecido por:|Prêmios:)\s*/i, '');
 const normVal = (t) => clean(stripLabel(t)).toLowerCase();
 
-const INFO_LINES_MAX = 3;
+const INFO_LINES_MAX = 3;            // quantas "linhas de info" (itens) mostrar
+const SUBTITLE_MAX_LINES = 4;        // quantas linhas de TEXTO cada item pode ocupar
 
 // base: apenas quem tem QI numérico e nome válido
 function pickTrio(arr) {
@@ -293,12 +294,14 @@ export default function IQ({ navigation, route }) {
   if (showIntro) {
     return (
       <LinearGradient colors={['#0f2027', '#203a43', '#2c5364']} style={{ flex: 1 }}>
-        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        {/* Header como overlay para não empurrar o conteúdo */}
+        <View style={[styles.header, styles.headerOverlay, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Feather name="arrow-left" size={26} color="#fff" />
           </TouchableOpacity>
         </View>
 
+        {/* Centro realmente no meio da tela */}
         <View style={styles.introCenter}>
           <View style={styles.introCard}>
             <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'center', marginBottom: 8 }}>
@@ -485,7 +488,13 @@ export default function IQ({ navigation, route }) {
                 >
                   <Text style={styles.optionName}>{nm}</Text>
                   {lines.map((t, i) => (
-                    <Text key={i} style={styles.optionSubtitle} numberOfLines={2}>{t}</Text>
+                    <Text
+                      key={i}
+                      style={styles.optionSubtitle}
+                      numberOfLines={SUBTITLE_MAX_LINES}   // antes: 2
+                    >
+                      {t}
+                    </Text>
                   ))}
                 </TouchableOpacity>
               );
@@ -595,6 +604,10 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
 
   header: { paddingTop: 0, paddingBottom: 12, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerOverlay: {
+    position: 'absolute', left: 0, right: 0, top: 0, zIndex: 10,
+    // paddingBottom continua para manter a altura do toque do botão
+  },
   backButton: { padding: 6 },
   iconBtn: { padding: 8, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 14 },
 
