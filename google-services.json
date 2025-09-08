@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:790688368972:android:0ed2c331eab8f54365e7e9",
+        "mobilesdk_app_id": "1:790688368972:android:675bddc12afa9bcc65e7e9",
         "android_client_info": {
-          "package_name": "com.sigmaiq.app"
+          "package_name": "com.sigmaiq.testeqi"
         }
       },
       "oauth_client": [],
