@@ -39,7 +39,7 @@ import Adivinhe from './TELAS/Personalidades/Adivinhe';
 import IQ from './TELAS/Personalidades/IQ';
 import DesafioDetalhe from './TELAS/Desafio/DesafioDetalhe';
 import ThinkFastDesafio from './TELAS/ThinkFastDesafio';
-import { initIAP, onEntitlementsChanged } from './utils/iapRevenueCat'
+import { initIAP, subscribeCustomerInfo } from './utils/iap';
 
 // (2) navigationRef para navegação fora de componentes (igual App.js)
 export const navigationRef = createNavigationContainerRef();
@@ -167,7 +167,7 @@ export default function App() {
         console.log('[IAP] init erro', e?.message || e)
       }
     })();
-    const sub = onEntitlementsChanged?.(() => {
+    const sub = subscribeCustomerInfo(() => {
       // opcional: poderíamos disparar um refresh do EntitlementsContext via evento global
       // deixando leve por enquanto
     })

@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native'
 
 import { supabase } from '../../supabaseClient';
-import { personalities, dataIQ } from './dataProcessor';
+import { loadPersonalities } from './personalitiesLoader'
 import { updateRecord } from './records';
 import { SafeScreen } from '../components/SafeScreen';
 import { usePlano } from '../../planoContext'
@@ -30,6 +30,7 @@ const isKnown = (v) => {
   const s = clean(v).toLowerCase();
   return !!s && s !== 'desconhecido' && s !== 'nf' && s !== 'na' && s !== 'n/a';
 };
+// Garantir que nome sempre vem de person
 const nameOf = (p) => clean(p?.person);
 const arrify = (v) => Array.isArray(v) ? v : (isKnown(v) ? String(v).split(/[,;•|]/).map(s => clean(s)).filter(Boolean) : []);
 const randFrom = (arr) => (Array.isArray(arr) && arr.length ? arr[Math.floor(Math.random() * arr.length)] : null);
@@ -220,16 +221,43 @@ export default function IQ({ navigation, route }) {
     }
   }, []);
 
+  const [dataIQList, setDataIQList] = useState([])
+  const [loadingPers, setLoadingPers] = useState(true)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const mem = await loadPersonalities()
+        if (!mounted) return
+        // Usa somente quem tem os DOIS campos numéricos
+        const list = (mem?.dataIQBoth || []).filter(p =>
+          isFinite(+p.QI_calculado) && isFinite(+p.pIQ_HM_estimado)
+        )
+        setDataIQList(list)
+        console.log('[IQ] loaded total=', mem.all?.length,
+          'QI>=1=', mem.dataIQAny?.length,
+          'QI ambos=', mem.dataIQBoth?.length,
+          'usando=', list.length)
+      } finally {
+        if (mounted) setLoadingPers(false)
+      }
+    })()
+    return () => { mounted = false }
+  }, []);
+
   const newQuestion = useCallback(() => {
+    if (!dataIQList.length) return;
     setSelection(null);
-    const tr = pickTrio(dataIQ);
+    const tr = pickTrio(dataIQList);
     setTrio(tr);
     setInfoLines(tr ? tr.map(p => pickInfoLines(p)) : []);
     playSound(SOUND_START);
     startTimer();
-  }, [playSound, startTimer]);
+  }, [playSound, startTimer, dataIQList]);
 
   const startGame = useCallback(() => {
+    if (loadingPers || dataIQList.length < 3) return;
     timesMsRef.current = [];
     correctnessRef.current = [];
     sessionStartRef.current = Date.now();
@@ -238,7 +266,16 @@ export default function IQ({ navigation, route }) {
     setShowIntro(false);
     setShowResult(false);
     newQuestion();
-  }, [newQuestion]);
+  }, [newQuestion, dataIQList, loadingPers]);
+
+  useEffect(() => {
+    console.log('[IQ] totals -> comQI:', dataIQList.length);
+  }, [dataIQList.length]);
+
+  // REMOVER ESTE BLOCO ANTIGO (causava ReferenceError):
+  // useEffect(() => {
+  //   console.log('[IQ] mount, personalities len', personalities.length)
+  // }, []);
 
   const iniciarIQ = useCallback(async () => {
     console.log('[IQ] iniciarIQ plano=', plano);
@@ -254,8 +291,8 @@ export default function IQ({ navigation, route }) {
   }, [plano, navigation, startGame, openPaywall]);
 
   useEffect(() => {
-    console.log('[IQ] mount, personalities len', personalities.length)
-  }, []);
+    console.log('[IQ] mount dataIQ len', dataIQList.length);
+  }, [dataIQList.length]);
 
   // Persistir número de rounds (opcional)
   const saveRounds = useCallback(async (val) => {
@@ -311,9 +348,11 @@ export default function IQ({ navigation, route }) {
             <Text style={styles.introText}>
               Três personalidades serão mostradas. Escolha quem possui o maior QI. Se houver empate no maior QI, qualquer uma das empatadas vale.
             </Text>
-            <TouchableOpacity style={styles.primaryBtn} onPress={iniciarIQ} activeOpacity={0.9}>
+            <TouchableOpacity style={styles.primaryBtn} onPress={iniciarIQ} activeOpacity={0.9} disabled={loadingPers || dataIQList.length < 3}>
               <Feather name="play-circle" size={20} color="#0a0f12" />
-              <Text style={styles.primaryBtnTxt}>Começar</Text>
+              <Text style={styles.primaryBtnTxt}>
+                {loadingPers ? 'Carregando...' : 'Começar'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -328,6 +367,10 @@ export default function IQ({ navigation, route }) {
         />
       </LinearGradient>
     );
+  }
+
+  if (loadingPers && !showIntro) {
+    return <ActivityIndicator size="large" color="#fff" style={{ flex:1, backgroundColor:'#0f2027' }}/>
   }
 
   if (!trio) {

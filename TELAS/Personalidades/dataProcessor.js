@@ -15,6 +15,9 @@ try {
   console.log('[personas] sem arquivo local (usará cache/remoto)')
 }
 
+// >>> NOVO: flag para não exigir QI (coloque false se quiser manter antigo)
+const REQUIRE_QI = false;
+
 // ================== HELPERS ==================
 function toInt(v) {
   if (v == null) return null
@@ -69,13 +72,61 @@ function parseEmbeddedCsv(arr) {
 }
 
 function parseData(raw) {
-  if (!Array.isArray(raw) || !raw.length) return []
-  const embedded = Object.keys(raw[0] || {}).length === 1
-  const arr = embedded ? parseEmbeddedCsv(raw) : parseNormalArray(raw)
-  return arr.filter(p =>
+  if (!Array.isArray(raw) || !raw.length) return [];
+  const embedded = Object.keys(raw[0] || {}).length === 1;
+  const arr = embedded ? parseEmbeddedCsv(raw) : parseNormalArray(raw);
+
+  // Métricas antes do filtro
+  const total = arr.length;
+  let comNome = 0, comAlgumQI = 0;
+  for (const p of arr) {
+    const hasNome = !!(p.nome || p.person);
+    if (hasNome) comNome++;
+    if (p.QI_calculado != null || p.pIQ_HM_estimado != null) comAlgumQI++;
+  }
+
+  const filtered = arr.filter(p =>
     (p.nome || p.person) &&
-    (p.QI_calculado != null || p.pIQ_HM_estimado != null)
-  )
+    (REQUIRE_QI ? (p.QI_calculado != null || p.pIQ_HM_estimado != null) : true)
+  );
+
+  console.log('[personas][parseData]',
+    'total=', total,
+    'comNome=', comNome,
+    'comAlgumQI=', comAlgumQI,
+    'mantidos=', filtered.length,
+    'requireQI=', REQUIRE_QI
+  );
+
+  // Opcional: logar alguns que foram descartados (limite 5)
+  if (filtered.length < total) {
+    let mostrados = 0;
+    for (const p of arr) {
+      if (mostrados >= 5) break;
+      const keep = filtered.includes(p);
+      if (!keep) {
+        console.log('[personas][descartado]',
+          (p.nome || p.person || '(sem nome)'),
+          'QI_calc=', p.QI_calculado,
+          'pIQ=', p.pIQ_HM_estimado
+        );
+        mostrados++;
+      }
+    }
+  }
+
+  return filtered;
+}
+
+// >>> NOVO: helper para stats em runtime
+export function personasDebugStats() {
+  const total = personalities.length;
+  let semQI = 0;
+  let comQI = 0;
+  for (const p of personalities) {
+    if (p.QI_calculado != null || p.pIQ_HM_estimado != null) comQI++; else semQI++;
+  }
+  return { total, comQI, semQI, REQUIRE_QI };
 }
 
 // ================== EXPORT INICIAL ==================
@@ -177,7 +228,7 @@ async function personasRefresh(session) {
     let parsed
     try { parsed = parseData(json) } catch(e){ console.log('[personas] parseData remoto ERRO', e.message); return }
 
-    console.log('[personas] parsed len', parsed.length)
+    console.log('[personas] parsed len', parsed.length, 'stats', personasDebugStats());
 
     if (parsed.length > 10) {
       personalities = parsed

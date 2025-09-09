@@ -10,9 +10,17 @@ import { supabase } from '../supabaseClient';
 let Purchases = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  Purchases = require('react-native-purchases');
+  const mod = require('react-native-purchases');
+  // Algumas versões exportam default, outras objeto direto
+  Purchases = mod?.default || mod || null;
 } catch (e) {
   Purchases = null;
+}
+
+const IS_EXPO_GO = Constants?.appOwnership === 'expo';
+
+function hasFn(obj, name) {
+  return !!(obj && typeof obj[name] === 'function');
 }
 
 function getApiKey() {
@@ -23,62 +31,77 @@ function getApiKey() {
 }
 
 export async function initIAP() {
-  if (!Purchases) {
-    console.warn('[IAP] Módulo nativo indisponível no Expo Go. Ignorando init.');
+  if (IS_EXPO_GO) {
+    console.warn('[IAP] Ignorado (Expo Go).');
     return;
   }
-  const { data } = await supabase.auth.getUser();
-  const uid = data?.user?.id;
-  const apiKey = getApiKey();
-
-  if (!apiKey) {
-    console.log('[IAP] API Key ausente, verifique app.json extra.*');
+  if (!Purchases || !hasFn(Purchases, 'configure')) {
+    console.warn('[IAP] Módulo nativo indisponível.');
     return;
   }
-
-  await Purchases.configure({ apiKey, appUserID: uid });
-  console.log('[IAP] RevenueCat configurado para', uid || 'anon');
+  try {
+    const { data } = await supabase.auth.getUser();
+    const uid = data?.user?.id;
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      console.log('[IAP] API Key ausente, verifique app.json extra.*');
+      return;
+    }
+    await Purchases.configure({ apiKey, appUserID: uid });
+    console.log('[IAP] RevenueCat configurado para', uid || 'anon');
+  } catch (e) {
+    console.warn('[IAP] init erro', e?.message || e);
+  }
 }
 
 export async function getHasEntitlement(entId = 'stf') {
-  if (!Purchases) return false; // No Expo Go, use Supabase/COMPRAS para gating
-  const info = await Purchases.getCustomerInfo();
-  return !!info?.entitlements?.active?.[entId];
+  if (!Purchases || !hasFn(Purchases, 'getCustomerInfo')) return false;
+  try {
+    const info = await Purchases.getCustomerInfo();
+    return !!info?.entitlements?.active?.[entId];
+  } catch {
+    return false;
+  }
 }
 
 export async function purchaseEntitlement(entId = 'stf') {
-  if (!Purchases) {
-    throw new Error('IAP indisponível no Expo Go. Use Dev Client ou voucher.');
+  if (!Purchases || !hasFn(Purchases, 'getOfferings') || !hasFn(Purchases, 'purchasePackage')) {
+    throw new Error('IAP indisponível (sem módulo nativo ou Expo Go).');
   }
   const offerings = await Purchases.getOfferings();
   const current = offerings?.current;
-  // Tenta encontrar um pacote válido (ex.: lifetime ou primeiro disponível)
   const pkg =
     current?.lifetime ||
     current?.availablePackages?.[0] ||
     offerings?.all?.[entId]?.availablePackages?.[0];
-
   if (!pkg) throw new Error('Oferta não encontrada');
   const { customerInfo } = await Purchases.purchasePackage(pkg);
   return !!customerInfo?.entitlements?.active?.[entId];
 }
 
 export async function restorePurchases(entId = 'stf') {
-  if (!Purchases) {
-    console.warn('[IAP] Restore indisponível no Expo Go.');
+  if (!Purchases || !hasFn(Purchases, 'restorePurchases')) {
+    console.warn('[IAP] Restore indisponível (sem módulo).');
     return false;
   }
-  const { customerInfo } = await Purchases.restorePurchases();
-  return !!customerInfo?.entitlements?.active?.[entId];
+  try {
+    const { customerInfo } = await Purchases.restorePurchases();
+    return !!customerInfo?.entitlements?.active?.[entId];
+  } catch {
+    return false;
+  }
 }
 
 export function onEntitlementsChanged(cb) {
-  if (!Purchases) {
-    // No Expo Go: retorna um unsubscribe no‑op
+  if (!Purchases || !hasFn(Purchases, 'addCustomerInfoUpdateListener')) {
     return () => {};
   }
-  return Purchases.addCustomerInfoUpdateListener((ci) => {
-    const has = !!ci?.entitlements?.active?.[ 'stf' ];
-    cb?.(has, ci);
-  });
+  try {
+    return Purchases.addCustomerInfoUpdateListener((ci) => {
+      const has = !!ci?.entitlements?.active?.['stf'];
+      cb?.(has, ci);
+    });
+  } catch {
+    return () => {};
+  }
 }

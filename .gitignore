@@ -1,1 +1,14 @@
-﻿(paste o conteúdo acima)
+﻿# Expo local state
+.expo/
+.expo-shared/
+
+# Node / build
+node_modules/
+dist/
+build/
+android/app/build/
+ios/Pods/
+
+# Logs / misc
+*.log
+.expo/*.json

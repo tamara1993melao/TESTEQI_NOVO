@@ -7,7 +7,7 @@ import Slider from '@react-native-community/slider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Confetti } from '../../components/Confetti'; // ADICIONE
 
-import { personalities } from './dataProcessor';
+import { loadPersonalities } from './personalitiesLoader';
 import { updateRecord } from './records';
 import { supabase } from '../../supabaseClient'; // ADICIONE (já estava)
 // >>> GATING (novos imports)
@@ -123,9 +123,9 @@ function labelFor(key, val) {
     case 'cidade_2020': return `Nasceu na atual cidade de ${val}`;
     case 'pais_nascimento': return `Nascimento no país de ${val}`;
     case 'pais_trabalhou': return `País de principal atuação foi ${val}`;
-    case 'etnia': return `Sua etnia é ${val}`;
+    case 'etnia': return `${val}`;
     case 'genero': return `Seu gênero é ${val}`;
-    case 'familia': return `Veio de família ${val}`;
+    case 'familia': return `Veio de ${val}`;
     case 'imigrante': return `Foi imigrante`;
     case 'curiosidades': return `${val}`;
     case 'nobel': return `Laureado com o Nobel: ${val}`;
@@ -354,8 +354,26 @@ async function saveAdivinheResult({ score, percent, time_ms }) {
 }
 
 export default function Adivinhe({ navigation }) {
-  // Insets para topo dinâmico
-  const insets = useSafeAreaInsets(); // ALTERADO
+  const insets = useSafeAreaInsets();
+
+  // >>> NOVO ESTADO / CARREGAMENTO DE PERSONAS
+  const [persons, setPersons] = useState([]);
+  const [loadingPers, setLoadingPers] = useState(true);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const mem = await loadPersonalities();
+        if (!alive) return;
+        const all = mem?.all || [];
+        setPersons(all);
+        console.log('[Adivinhe] loaded total=', all.length, 'comQI=', mem?.dataIQ?.length);
+      } finally {
+        if (alive) setLoadingPers(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   // sessão
   const [config, setConfig] = useState({ rounds: DEFAULT_ROUNDS, difficulty: 'dificil' });
@@ -465,30 +483,28 @@ export default function Adivinhe({ navigation }) {
 
   // nova rodada
   const newQuestion = useCallback(() => {
+    if (!persons.length) return;
     setSelection(null);
     setSecretUses(0);
     setRevealedSecrets([]);
 
-    // Reabastece deck com "não vistos" que passam dificuldade
     if (!deckRef.current || deckRef.current.length === 0) {
       const seen = seenRef.current;
-      const allIdx = personalities.map((_, i) => i);
+      const allIdx = persons.map((_, i) => i);
       const unseenIdx = allIdx.filter(i => {
-        const p = personalities[i];
+        const p = persons[i];
         const k = personKey(p);
-            return k && !seen.has(k) && passDifficulty(p);
-        });
-        deckRef.current = shuffle(unseenIdx);
-
-        if (deckRef.current.length === 0) {
-          seenRef.current = new Set();
-          try { AsyncStorage.removeItem('adiv:seen'); } catch {}
-          const filteredAll = allIdx.filter(i => passDifficulty(personalities[i])); // FIX
-          deckRef.current = shuffle(filteredAll.length ? filteredAll : allIdx);
-        }
+        return k && !seen.has(k) && passDifficulty(p);
+      });
+      deckRef.current = shuffle(unseenIdx);
+      if (deckRef.current.length === 0) {
+        seenRef.current = new Set();
+        try { AsyncStorage.removeItem('adivinhe:seen'); } catch {}
+        const filteredAll = allIdx.filter(i => passDifficulty(persons[i]));
+        deckRef.current = shuffle(filteredAll.length ? filteredAll : allIdx);
       }
+    }
 
-    // Regras especiais
     const needModern = (MODERN_EVERY > 0) && ((index % MODERN_EVERY) === (MODERN_EVERY - 1));
     const needHighIndex = (HIGH_INDEX_EVERY > 0) && ((index + 1) % HIGH_INDEX_EVERY === 0);
 
@@ -497,17 +513,13 @@ export default function Adivinhe({ navigation }) {
       const predicate =
         (needModern && needHighIndex)
           ? (p) => isModernBirth(p) && isHighIndex(p)
-          : needModern
-            ? isModernBirth
-            : isHighIndex;
-      idx = popFromDeck(deckRef.current, personalities, predicate);
+          : needModern ? isModernBirth : isHighIndex;
+      idx = popFromDeck(deckRef.current, persons, predicate);
     } else {
       idx = deckRef.current.pop();
     }
 
-    const target = personalities[idx];
-
-    // Marca como visto
+    const target = persons[idx];
     const k = personKey(target);
     if (k) {
       const set = seenRef.current;
@@ -517,10 +529,10 @@ export default function Adivinhe({ navigation }) {
       }
     }
 
-    setRound(makeRound(personalities, target));
+    setRound(makeRound(persons, target));
     playSound(SOUND_START);
     startTimer();
-  }, [playSound, startTimer, index, config?.difficulty]);
+  }, [playSound, startTimer, index, config?.difficulty, persons]);
 
   // novo jogo
   const startGame = useCallback(() => {
@@ -537,6 +549,7 @@ export default function Adivinhe({ navigation }) {
 
   // >>> Função de início com verificação de limite (igual ao IQ)
   const iniciarAdivinhe = useCallback(async () => {
+    if (loadingPers || persons.length < 6) return;
     console.log('[ADIVINHE] iniciarAdivinhe plano=', plano);
     const r = await tentarUsar('ADIVINHE', plano);
     console.log('[ADIVINHE] resultado tentarUsar', r);
@@ -548,7 +561,7 @@ export default function Adivinhe({ navigation }) {
       return;
     }
     startGame();
-  }, [plano, navigation, openPaywall, startGame]);
+  }, [plano, navigation, openPaywall, startGame, loadingPers, persons.length]);
 
   const saveRounds = async (val) => {
     const v = Math.max(5, Math.min(50, Math.round(val)));
@@ -620,7 +633,11 @@ export default function Adivinhe({ navigation }) {
     const elapsed = Date.now() - startRef.current;
     stopTimer();
 
-    const isCorrect = personObj.nome === round.target.nome;
+    // Alterado: usar somente .person
+    const chosenName = (personObj?.person || '').trim();
+    const correctName = (round.target?.person || '').trim();
+    const isCorrect = chosenName && correctName && chosenName === correctName;
+
     correctnessRef.current.push(isCorrect);
     timesMsRef.current.push(elapsed);
 
@@ -633,7 +650,6 @@ export default function Adivinhe({ navigation }) {
       setCorrectCount(c => c + 1);
       setScorePoints(s => s + inc);
       playSound(SOUND_VICTORY);
-
       (async () => {
         try {
           if (bestCorrectMs == null || elapsed < bestCorrectMs) {
@@ -642,13 +658,15 @@ export default function Adivinhe({ navigation }) {
           }
         } catch {}
       })();
-      setSelection({ person: personObj.person, status: 'correct' });
     } else {
       playSound(SOUND_DEFEAT);
-      setSelection({ nome: personObj.nome, status: 'incorrect' });
     }
 
-    // Não atualiza recorde por questão; salvamos ao final da sessão em finishSession().
+    setSelection({
+      chosen: chosenName,
+      correct: correctName,
+      status: isCorrect ? 'correct' : 'incorrect'
+    });
   };
 
   // Próxima
@@ -754,9 +772,11 @@ export default function Adivinhe({ navigation }) {
             </Text>
             <Text style={styles.introTips}>Analise com calma!</Text>
 
-            <TouchableOpacity style={styles.primaryBtn} onPress={iniciarAdivinhe} activeOpacity={0.9}>
+            <TouchableOpacity style={styles.primaryBtn} onPress={iniciarAdivinhe} activeOpacity={0.9} disabled={loadingPers || persons.length < 6}>
               <Feather name="play-circle" size={20} color="#0a0f12" />
-              <Text style={styles.primaryBtnTxt}>Começar</Text>
+              <Text style={styles.primaryBtnTxt}>
+                {loadingPers ? 'Carregando...' : 'Começar'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -773,6 +793,10 @@ export default function Adivinhe({ navigation }) {
         />
       </LinearGradient>
     );
+  }
+
+  if (loadingPers && !showIntro) {
+    return <ActivityIndicator size="large" color="#fff" style={{ flex:1, backgroundColor:'#0f2027' }}/>;
   }
 
   if (!round) {
@@ -930,18 +954,15 @@ export default function Adivinhe({ navigation }) {
           {/* Opções */}
           <View style={{ gap: 12, marginBottom: 10 }}>
             {round.options.map((opt) => {
-              const nome = nomeOf(opt);
-              const isSelected = selection?.nome === nome;
+              // Alterado: exibir somente .person
+              const display = (opt.person || '').trim();
+              const isChosen = selection?.chosen === display;
+              const isCorrect = selection && selection.correct === display;
 
               let styleBtn = styles.optionButton;
-
-              // Apenas estiliza o botão que foi selecionado
-              if (isSelected) {
-                if (selection.status === 'correct') {
-                  styleBtn = styles.correctButton; // Fica verde se a seleção foi correta
-                } else {
-                  styleBtn = styles.incorrectButton; // Fica vermelho se a seleção foi incorreta
-                }
+              if (selection) {
+                if (isCorrect) styleBtn = styles.correctButton;
+                else if (isChosen && selection.status === 'incorrect') styleBtn = styles.incorrectButton;
               }
 
               return (
@@ -952,7 +973,7 @@ export default function Adivinhe({ navigation }) {
                   disabled={!!selection}
                   activeOpacity={0.9}
                 >
-                  <Text style={styles.optionText}>{nome}</Text>
+                  <Text style={styles.optionText}>{display}</Text>
                 </TouchableOpacity>
               );
             })}
